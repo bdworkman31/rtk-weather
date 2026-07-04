@@ -3,7 +3,7 @@ import weatherReducer from "./slices/weatherSlice";
 
 const store = configureStore({
   reducer: {
-    weather: weatherReducer,
+    forecast: weatherReducer,
   },
 });
 

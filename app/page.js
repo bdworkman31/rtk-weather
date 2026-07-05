@@ -34,6 +34,10 @@ export default function Home() {
       low: Math.min(...day.map((item) => item.main.temp)),
     }));
 
+  const sparklineHumidity = forecast?.list.map((item) => item.main.humidity);
+
+  const sparklinePressure = forecast?.list.map((item) => item.main.pressure);
+
   const sparklineTemps = [];
 
   dailyHigh_Lows.forEach((day) => {
@@ -41,12 +45,9 @@ export default function Home() {
     sparklineTemps.push(day.high);
   });
 
-  console.log(dailyHigh_Lows);
-
   return (
     <main className={styles.main}>
       <h1>Weather App</h1>
-
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -57,17 +58,35 @@ export default function Home() {
 
         <button type="submit">Get Weather</button>
       </form>
+      {sparklineTemps.length > 0 &&
+        sparklineHumidity.length > 0 &&
+        sparklinePressure.length > 0 && (
+          <div className={styles.weatherContainer}>
+            <div className={styles.card}>
+              <p>Daily Highs / Lows</p>
+              <Sparklines data={sparklineTemps}>
+                <SparklinesLine color="orange" />
+                <SparklinesReferenceLine type="mean" />
+              </Sparklines>
+            </div>
 
-      {
-        <div>
-          <p>Daily Highs / Lows</p>
-          <Sparklines data={sparklineTemps}>
-            <SparklinesLine color="red" />
+            <div className={styles.card}>
+              <p>Humidity</p>
+              <Sparklines data={sparklineHumidity}>
+                <SparklinesLine color="red" />
+                <SparklinesReferenceLine type="mean" />
+              </Sparklines>
+            </div>
 
-            <SparklinesReferenceLine type="mean" />
-          </Sparklines>
-        </div>
-      }
+            <div className={styles.card}>
+              <p>Pressure</p>
+              <Sparklines data={sparklinePressure}>
+                <SparklinesLine color="white" />
+                <SparklinesReferenceLine type="mean" />
+              </Sparklines>
+            </div>
+          </div>
+        )}
     </main>
   );
 }

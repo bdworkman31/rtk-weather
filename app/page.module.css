@@ -242,3 +242,12 @@
   width: 300px;
   text-align: center;
 }
+
+.cityName {
+  text-align: center;
+}
+
+.citySel {
+  width: 100%;
+  margin-top: 10px;
+}

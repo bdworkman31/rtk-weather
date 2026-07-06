@@ -10,44 +10,19 @@ import {
 } from "react-sparklines";
 
 export default function Home() {
-  const { city, forecast } = useSelector((state) => state.forecast);
+  const { city, charts } = useSelector((state) => state.forecast);
 
   const dispatch = useDispatch();
+
   const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(fetchWeather(city));
   };
 
-  const groupedDays = forecast?.list.reduce((days, item) => {
-    const date = item.dt_txt.split(" ")[0];
-
-    days[date] ??= [];
-    days[date].push(item);
-
-    return days;
-  }, {});
-
-  const dailyHigh_Lows = Object.values(groupedDays ?? {})
-    .slice(1)
-    .map((day) => ({
-      high: Math.max(...day.map((item) => item.main.temp)),
-      low: Math.min(...day.map((item) => item.main.temp)),
-    }));
-
-  const sparklineHumidity = forecast?.list.map((item) => item.main.humidity);
-
-  const sparklinePressure = forecast?.list.map((item) => item.main.pressure);
-
-  const sparklineTemps = [];
-
-  dailyHigh_Lows.forEach((day) => {
-    sparklineTemps.push(day.low);
-    sparklineTemps.push(day.high);
-  });
-
   return (
     <main className={styles.main}>
       <h1>Weather App</h1>
+
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -58,35 +33,40 @@ export default function Home() {
 
         <button type="submit">Get Weather</button>
       </form>
-      {sparklineTemps.length > 0 &&
-        sparklineHumidity.length > 0 &&
-        sparklinePressure.length > 0 && (
+
+      {charts.map((chart) => (
+        <div className={styles.citySel}>
+          <h2 className={styles.cityName}>{chart.city}</h2>
           <div className={styles.weatherContainer}>
             <div className={styles.card}>
-              <p>Daily Highs / Lows</p>
-              <Sparklines data={sparklineTemps}>
+              <p>Temperature</p>
+              <Sparklines data={chart.temps}>
                 <SparklinesLine color="orange" />
                 <SparklinesReferenceLine type="mean" />
               </Sparklines>
+              <p>{chart.meanTemp}°F</p>
             </div>
 
             <div className={styles.card}>
               <p>Humidity</p>
-              <Sparklines data={sparklineHumidity}>
+              <Sparklines data={chart.humidity}>
                 <SparklinesLine color="red" />
                 <SparklinesReferenceLine type="mean" />
               </Sparklines>
+              <p>{chart.meanHumidity}%</p>
             </div>
 
             <div className={styles.card}>
               <p>Pressure</p>
-              <Sparklines data={sparklinePressure}>
+              <Sparklines data={chart.pressure}>
                 <SparklinesLine color="white" />
                 <SparklinesReferenceLine type="mean" />
               </Sparklines>
+              <p>{chart.meanPressure} hPa</p>
             </div>
           </div>
-        )}
+        </div>
+      ))}
     </main>
   );
 }

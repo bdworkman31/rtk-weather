@@ -14,6 +14,7 @@ const weatherSlice = createSlice({
   name: "weather",
   initialState: {
     city: "",
+    charts: [],
     forecast: null,
     isLoading: false,
     error: null,
@@ -35,6 +36,52 @@ const weatherSlice = createSlice({
       .addCase(fetchWeather.fulfilled, (state, action) => {
         state.isLoading = false;
         state.forecast = action.payload;
+
+        const forecast = action.payload;
+
+        const getMean = (array) => {
+          return Math.ceil(
+            array.reduce((sum, item) => sum + item, 0) / array.length,
+          );
+        };
+
+        const groupedDays = forecast?.list.reduce((days, item) => {
+          const date = item.dt_txt.split(" ")[0];
+
+          days[date] ??= [];
+          days[date].push(item);
+
+          return days;
+        }, {});
+
+        const dailyHigh_Lows = Object.values(groupedDays ?? {})
+          .slice(1)
+          .map((day) => ({
+            high: Math.max(...day.map((item) => item.main.temp)),
+            low: Math.min(...day.map((item) => item.main.temp)),
+          }));
+
+        const temps = [];
+
+        dailyHigh_Lows.forEach((day) => {
+          temps.push(day.low);
+          temps.push(day.high);
+        });
+
+        const humidity = forecast?.list.map((item) => item.main.humidity) ?? [];
+
+        const pressure = forecast?.list.map((item) => item.main.pressure) ?? [];
+
+        state.charts.push({
+          city: action.payload.city.name,
+          forecast: action.payload,
+          temps,
+          humidity,
+          pressure,
+          meanTemp: getMean(temps),
+          meanHumidity: getMean(humidity),
+          meanPressure: getMean(pressure),
+        });
       })
 
       .addCase(fetchWeather.rejected, (state, action) => {

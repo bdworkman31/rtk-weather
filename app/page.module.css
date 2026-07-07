@@ -230,24 +230,38 @@
   }
 }
 
+.cityName {
+  flex: 0 0 150px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.columnNameContainer {
+  display: flex;
+  width: 100%;
+  gap: 20px;
+  align-items: center;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 10px;
+  padding-top: 10px;
+  border-top: 2px solid #ccc;
+}
+
 .weatherContainer {
   display: flex;
+  width: 100%;
   gap: 20px;
-  justify-content: center;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
 .card {
-  width: 300px;
+  flex: 1;
   text-align: center;
 }
 
-.cityName {
-  text-align: center;
-}
-
-.citySel {
-  width: 100%;
-  margin-top: 10px;
+.buttonClass {
+  color: blue;
+  margin-left: 20px;
+  font-weight: bold;
+  padding: 5px;
 }

@@ -14,6 +14,7 @@ const weatherSlice = createSlice({
   name: "weather",
   initialState: {
     city: "",
+    defaultCity: "",
     charts: [],
     forecast: null,
     isLoading: false,
@@ -23,6 +24,9 @@ const weatherSlice = createSlice({
   reducers: {
     setCity: (state, action) => {
       state.city = action.payload;
+    },
+    setDefault: (state, action) => {
+      state.defaultCity = action.payload;
     },
   },
 
@@ -72,16 +76,26 @@ const weatherSlice = createSlice({
 
         const pressure = forecast?.list.map((item) => item.main.pressure) ?? [];
 
-        state.charts.push({
-          city: action.payload.city.name,
-          forecast: action.payload,
-          temps,
-          humidity,
-          pressure,
-          meanTemp: getMean(temps),
-          meanHumidity: getMean(humidity),
-          meanPressure: getMean(pressure),
-        });
+        const city = action.payload.city.name;
+
+        const cityInList = state.charts.some(
+          (chart) => chart.city.toLowerCase() === city.toLowerCase(),
+        );
+
+  
+
+        if (!cityInList) {
+          state.charts.unshift({
+            city: action.payload.city.name,
+            forecast: action.payload,
+            temps,
+            humidity,
+            pressure,
+            meanTemp: getMean(temps),
+            meanHumidity: getMean(humidity),
+            meanPressure: getMean(pressure),
+          });
+        }
       })
 
       .addCase(fetchWeather.rejected, (state, action) => {
@@ -91,6 +105,6 @@ const weatherSlice = createSlice({
   },
 });
 
-export const { setCity } = weatherSlice.actions;
+export const { setCity, setDefault } = weatherSlice.actions;
 
 export default weatherSlice.reducer;

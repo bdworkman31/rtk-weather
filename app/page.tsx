@@ -1,5 +1,6 @@
 "use client";
 
+import type { AppDispatch, RootState } from "./store/configureStore";
 import styles from "./page.module.css";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,12 +11,15 @@ import {
   SparklinesReferenceLine,
 } from "react-sparklines";
 
+const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+const useAppSelector = useSelector.withTypes<RootState>();
+
 export default function Home() {
-  const { city, charts, defaultCity, isLoading, error } = useSelector(
+  const { city, charts, defaultCity, isLoading, error } = useAppSelector(
     (state) => state.forecast,
   );
 
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,7 +60,7 @@ export default function Home() {
         </button>
         <button
           className={styles.buttonClass}
-          type="submit"
+          type="button"
           onClick={handleDefault}
         >
           Set as Default

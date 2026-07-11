@@ -1,31 +1,72 @@
 import axios from "axios";
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 const API_KEY = "d408f27efbf2eb54ef2bd39871d4fe8b";
 
-export const fetchWeather = createAsyncThunk("fetchWeather", async (city) => {
-  const response = await axios.get(
-    `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=imperial`,
-  );
-  return response.data;
-});
+type WeatherItem = {
+  dt_txt: string;
+  main: {
+    temp: number;
+    humidity: number;
+    pressure: number;
+  };
+};
+
+type WeatherResponse = {
+  city: {
+    name: string;
+  };
+  list: WeatherItem[];
+};
+
+type WeatherChart = {
+  city: string;
+  forecast: WeatherResponse;
+  temps: number[];
+  humidity: number[];
+  pressure: number[];
+  meanTemp: number;
+  meanHumidity: number;
+  meanPressure: number;
+};
+
+type WeatherState = {
+  city: string;
+  defaultCity: string;
+  charts: WeatherChart[];
+  forecast: WeatherResponse | null;
+  isLoading: boolean;
+  error: string | undefined;
+};
+
+const initialState: WeatherState = {
+  city: "",
+  defaultCity: "",
+  charts: [],
+  forecast: null,
+  isLoading: false,
+  error: undefined,
+};
+
+export const fetchWeather = createAsyncThunk<WeatherResponse, string>(
+  "fetchWeather",
+  async (city: string) => {
+    const response = await axios.get<WeatherResponse>(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=imperial`,
+    );
+    return response.data;
+  },
+);
 
 const weatherSlice = createSlice({
   name: "weather",
-  initialState: {
-    city: "",
-    defaultCity: "",
-    charts: [],
-    forecast: null,
-    isLoading: false,
-    error: null,
-  },
+  initialState,
 
   reducers: {
-    setCity: (state, action) => {
+    setCity: (state, action: PayloadAction<string>) => {
       state.city = action.payload;
     },
-    setDefault: (state, action) => {
+    setDefault: (state, action: PayloadAction<string>) => {
       state.defaultCity = action.payload;
     },
   },
@@ -34,7 +75,7 @@ const weatherSlice = createSlice({
     builder
       .addCase(fetchWeather.pending, (state) => {
         state.isLoading = true;
-        state.error = null;
+        state.error = undefined;
       })
 
       .addCase(fetchWeather.fulfilled, (state, action) => {
@@ -43,13 +84,15 @@ const weatherSlice = createSlice({
 
         const forecast = action.payload;
 
-        const getMean = (array) => {
+        const getMean = (array: number[]) => {
           return Math.ceil(
             array.reduce((sum, item) => sum + item, 0) / array.length,
           );
         };
 
-        const groupedDays = forecast?.list.reduce((days, item) => {
+        const groupedDays = forecast?.list.reduce<
+          Record<string, WeatherItem[]>
+        >((days, item) => {
           const date = item.dt_txt.split(" ")[0];
 
           days[date] ??= [];
@@ -65,7 +108,7 @@ const weatherSlice = createSlice({
             low: Math.min(...day.map((item) => item.main.temp)),
           }));
 
-        const temps = [];
+        const temps: number[] = [];
 
         dailyHigh_Lows.forEach((day) => {
           temps.push(day.low);
@@ -81,8 +124,6 @@ const weatherSlice = createSlice({
         const cityInList = state.charts.some(
           (chart) => chart.city.toLowerCase() === city.toLowerCase(),
         );
-
-  
 
         if (!cityInList) {
           state.charts.unshift({

@@ -264,4 +264,21 @@
   margin-left: 20px;
   font-weight: bold;
   padding: 5px;
+  border-radius: 18px;
+}
+
+.geoLocate {
+  color: rgb(139, 180, 106);
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 18px;
+}
+
+.map {
+  width: 100%;
+  max-width: 900px;
+  height: 400px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 10px;
 }

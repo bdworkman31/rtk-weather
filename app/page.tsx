@@ -2,9 +2,14 @@
 
 import type { AppDispatch, RootState } from "./store/configureStore";
 import styles from "./page.module.css";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setCity, setDefault, fetchWeather } from "./store/slices/weatherSlice";
+import {
+  setCity,
+  setDefault,
+  fetchWeather,
+  geoLocateWeather,
+} from "./store/slices/weatherSlice";
 import {
   Sparklines,
   SparklinesLine,
@@ -19,19 +24,59 @@ export default function Home() {
     (state) => state.forecast,
   );
 
+  const [currentCoords, setCurrentCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const [isLocating, setIsLocating] = useState(false);
+
+  const API_KEY = "AIzaSyAssh9tmRV-DW_7coXhPbjzojPxue3A0mQ";
+
   const dispatch = useAppDispatch();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     dispatch(fetchWeather(city));
     dispatch(setCity(""));
   };
 
-  const handleDefault = (e) => {
+  const handleDefault = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    dispatch(setDefault(city));
-    localStorage.setItem("defaultWeatherCity", city);
-    alert(`${city} has been saved to default!`);
+
+    localStorage.setItem("defaultWeatherCity", charts[0].city);
+    dispatch(setCity(""));
+    alert(`${charts[0].city} has been saved to default!`);
+  };
+
+  const handleCurrentLocation = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported.");
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const location = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+
+        setCurrentCoords(location);
+
+        dispatch(geoLocateWeather(location)).finally(() => {
+          setIsLocating(false);
+        });
+      },
+      (error) => {
+        setIsLocating(false);
+        alert(error.message);
+      },
+    );
   };
 
   useEffect(() => {
@@ -40,6 +85,8 @@ export default function Home() {
     if (savedCity) {
       dispatch(setDefault(savedCity));
       dispatch(fetchWeather(savedCity));
+      dispatch(setCity(savedCity));
+      dispatch(setCity(""));
     }
   }, [dispatch]);
 
@@ -67,11 +114,32 @@ export default function Home() {
         </button>
       </form>
 
+      <button
+        className={styles.geoLocate}
+        type="button"
+        onClick={handleCurrentLocation}
+      >
+        Find Current Location
+      </button>
+
+      {(isLocating || isLoading) && <p>Loading...</p>}
+
+      {currentCoords && (
+        <iframe
+          className={styles.map}
+          title="Current location map"
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={`https://www.google.com/maps/embed/v1/place?key=${API_KEY}&q=${currentCoords.latitude},${currentCoords.longitude}`}
+        />
+      )}
+
       {defaultCity && (
         <p className={styles.card}>Default city: {defaultCity}</p>
       )}
 
-      {isLoading && <p>Loading...</p>}
+      {(isLocating || isLoading) && <p>Loading...</p>}
 
       {error && <p>{error}</p>}
 

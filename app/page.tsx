@@ -1,15 +1,25 @@
 "use client";
 
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  Pin,
+} from "@vis.gl/react-google-maps";
+import type { MapMouseEvent } from "@vis.gl/react-google-maps";
+
 import type { AppDispatch, RootState } from "./store/configureStore";
 import styles from "./page.module.css";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+
 import {
   setCity,
   setDefault,
   fetchWeather,
   geoLocateWeather,
 } from "./store/slices/weatherSlice";
+
 import {
   Sparklines,
   SparklinesLine,
@@ -29,14 +39,21 @@ export default function Home() {
     longitude: number;
   } | null>(null);
 
+  const [selectedCoords, setSelectedCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
   const [isLocating, setIsLocating] = useState(false);
 
-  const API_KEY = "AIzaSyAssh9tmRV-DW_7coXhPbjzojPxue3A0mQ";
+  const API_KEY = "AIzaSyDbcmkOz0m2H2Eo5eum8Cm61U4jWCrn6rg";
+  const MAP_ID = "a6a16c3d3827ae115b8017cd";
 
   const dispatch = useAppDispatch();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     dispatch(fetchWeather(city));
     dispatch(setCity(""));
   };
@@ -46,7 +63,24 @@ export default function Home() {
 
     localStorage.setItem("defaultWeatherCity", charts[0].city);
     dispatch(setCity(""));
+
     alert(`${charts[0].city} has been saved to default!`);
+  };
+
+  const handleMapClick = (event: MapMouseEvent) => {
+    const clickedCoords = event.detail.latLng;
+
+    if (!clickedCoords) {
+      return;
+    }
+
+    const location = {
+      latitude: clickedCoords.lat,
+      longitude: clickedCoords.lng,
+    };
+
+    setSelectedCoords(location);
+    dispatch(geoLocateWeather(location));
   };
 
   const handleCurrentLocation = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -67,6 +101,7 @@ export default function Home() {
         };
 
         setCurrentCoords(location);
+        setSelectedCoords(location);
 
         dispatch(geoLocateWeather(location)).finally(() => {
           setIsLocating(false);
@@ -105,6 +140,7 @@ export default function Home() {
         <button className={styles.buttonClass} type="submit">
           Get Weather
         </button>
+
         <button
           className={styles.buttonClass}
           type="button"
@@ -125,14 +161,41 @@ export default function Home() {
       {(isLocating || isLoading) && <p>Loading...</p>}
 
       {currentCoords && (
-        <iframe
-          className={styles.map}
-          title="Current location map"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-          src={`https://www.google.com/maps/embed/v1/place?key=${API_KEY}&q=${currentCoords.latitude},${currentCoords.longitude}`}
-        />
+        <APIProvider apiKey={API_KEY}>
+          <div className={styles.map}>
+            <Map
+              defaultCenter={{
+                lat: currentCoords.latitude,
+                lng: currentCoords.longitude,
+              }}
+              defaultZoom={10}
+              mapId={MAP_ID}
+              gestureHandling="greedy"
+              onClick={handleMapClick}
+              style={{
+                width: "100%",
+                height: "400px",
+                border: "4 px solid blue",
+              }}
+            >
+              {selectedCoords && (
+                <AdvancedMarker
+                  position={{
+                    lat: selectedCoords.latitude,
+                    lng: selectedCoords.longitude,
+                  }}
+                  title="Selected location"
+                >
+                  <Pin
+                    background="#4285F4"
+                    borderColor="#ffffff"
+                    glyphColor="#ffffff"
+                  />
+                </AdvancedMarker>
+              )}
+            </Map>
+          </div>
+        </APIProvider>
       )}
 
       {defaultCity && (
@@ -151,7 +214,7 @@ export default function Home() {
       </div>
 
       {charts.map((chart) => (
-        <div key={`${chart}`} className={styles.weatherContainer}>
+        <div key={chart.city} className={styles.weatherContainer}>
           <div className={styles.card}>
             <h2 className={styles.cityName}>{chart.city}</h2>
           </div>
@@ -161,6 +224,7 @@ export default function Home() {
               <SparklinesLine color="orange" />
               <SparklinesReferenceLine type="mean" />
             </Sparklines>
+
             <p>{chart.meanTemp}°F</p>
           </div>
 
@@ -169,6 +233,7 @@ export default function Home() {
               <SparklinesLine color="red" />
               <SparklinesReferenceLine type="mean" />
             </Sparklines>
+
             <p>{chart.meanHumidity}%</p>
           </div>
 
@@ -177,6 +242,7 @@ export default function Home() {
               <SparklinesLine color="white" />
               <SparklinesReferenceLine type="mean" />
             </Sparklines>
+
             <p>{chart.meanPressure} hPa</p>
           </div>
         </div>

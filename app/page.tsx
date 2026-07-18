@@ -169,6 +169,8 @@ export default function Home() {
                 lng: currentCoords.longitude,
               }}
               defaultZoom={10}
+              npm
+              run
               mapId={MAP_ID}
               gestureHandling="greedy"
               onClick={handleMapClick}

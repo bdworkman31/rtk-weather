@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 const API_KEY = "d408f27efbf2eb54ef2bd39871d4fe8b";
 
-type WeatherItem = {
+export type WeatherItem = {
   dt_txt: string;
   main: {
     temp: number;
@@ -12,14 +12,14 @@ type WeatherItem = {
   };
 };
 
-type WeatherResponse = {
+export type WeatherResponse = {
   city: {
     name: string;
   };
   list: WeatherItem[];
 };
 
-type WeatherChart = {
+export type WeatherChart = {
   city: string;
   forecast: WeatherResponse;
   temps: number[];
@@ -30,7 +30,7 @@ type WeatherChart = {
   meanPressure: number;
 };
 
-type WeatherState = {
+export type WeatherState = {
   city: string;
   defaultCity: string;
   charts: WeatherChart[];
@@ -48,20 +48,36 @@ const initialState: WeatherState = {
   error: undefined,
 };
 
-type Coordinates = {
+export type Coordinates = {
   latitude: number;
   longitude: number;
 };
 
-export const fetchWeather = createAsyncThunk<WeatherResponse, string>(
-  "fetchWeather",
-  async (city: string) => {
+type WeatherError = {
+  message: string;
+};
+
+export const fetchWeather = createAsyncThunk<
+  WeatherResponse,
+  string,
+  { rejectValue: string }
+>("fetchWeather", async (city, thunkAPI) => {
+  try {
     const response = await axios.get<WeatherResponse>(
       `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=imperial`,
     );
+
     return response.data;
-  },
-);
+  } catch (error) {
+    if (axios.isAxiosError<WeatherError>(error)) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message ?? "Unable to find that city.",
+      );
+    }
+
+    return thunkAPI.rejectWithValue("Something went wrong.");
+  }
+});
 
 export const geoLocateWeather = createAsyncThunk<WeatherResponse, Coordinates>(
   "weather/geoLocateWeather",
@@ -151,6 +167,12 @@ const weatherSlice = createSlice({
     setDefault: (state, action: PayloadAction<string>) => {
       state.defaultCity = action.payload;
     },
+    clearError: (state) => {
+      state.error = undefined;
+    },
+    setError: (state, action: PayloadAction<string>) => {
+      state.error = action.payload;
+    },
   },
 
   extraReducers: (builder) => {
@@ -175,7 +197,7 @@ const weatherSlice = createSlice({
 
       .addCase(fetchWeather.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
 
       .addCase(geoLocateWeather.rejected, (state, action) => {
@@ -185,6 +207,7 @@ const weatherSlice = createSlice({
   },
 });
 
-export const { setCity, setDefault } = weatherSlice.actions;
+export const { setCity, setDefault, clearError, setError } =
+  weatherSlice.actions;
 
 export default weatherSlice.reducer;

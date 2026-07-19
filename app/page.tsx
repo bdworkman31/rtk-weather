@@ -1,30 +1,25 @@
 "use client";
 
-import {
-  APIProvider,
-  Map,
-  AdvancedMarker,
-  Pin,
-} from "@vis.gl/react-google-maps";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import type { MapMouseEvent } from "@vis.gl/react-google-maps";
 
 import type { AppDispatch, RootState } from "./store/configureStore";
+import type { Coordinates } from "./store/slices/weatherSlice";
 import styles from "./page.module.css";
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 import {
   setCity,
   setDefault,
   fetchWeather,
   geoLocateWeather,
+  setError,
+  clearError,
 } from "./store/slices/weatherSlice";
 
-import {
-  Sparklines,
-  SparklinesLine,
-  SparklinesReferenceLine,
-} from "react-sparklines";
+import WeatherSearch from "./components/WeatherSearch";
+import GoogleMap from "./components/GoogleMap";
+import WeatherCharts from "./components/WeatherCharts";
 
 const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 const useAppSelector = useSelector.withTypes<RootState>();
@@ -34,35 +29,61 @@ export default function Home() {
     (state) => state.forecast,
   );
 
-  const [currentCoords, setCurrentCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const dispatch = useAppDispatch();
 
-  const [selectedCoords, setSelectedCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [currentCoords, setCurrentCoords] = useState<Coordinates | null>(null);
+
+  const [selectedCoords, setSelectedCoords] = useState<Coordinates | null>(
+    null,
+  );
 
   const [isLocating, setIsLocating] = useState(false);
 
-  const API_KEY = "AIzaSyDbcmkOz0m2H2Eo5eum8Cm61U4jWCrn6rg";
-  const MAP_ID = "a6a16c3d3827ae115b8017cd";
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const dispatch = useAppDispatch();
+    const cityInList = charts.some(
+      (chart) => chart.city.toLowerCase() === city.toLowerCase(),
+    );
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+    if (cityInList) {
+      alert("Cirty already exists");
+      dispatch(setError("City already exists."));
+
+      setTimeout(() => {
+        dispatch(clearError());
+      }, 3000);
+
+      return;
+    }
+
+    if (!city.trim()) {
+      alert("Please Select a City");
+      dispatch(setError("Please select a city."));
+
+      setTimeout(() => {
+        dispatch(clearError());
+      }, 3000);
+
+      return;
+    }
 
     dispatch(fetchWeather(city));
     dispatch(setCity(""));
   };
 
-  const handleDefault = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
+  const handleCityChange = (newCity: string) => {
+    dispatch(setCity(newCity));
+  };
+
+  const handleDefault = () => {
+    if (!charts[0]) {
+      alert("Search for a city first.");
+      return;
+    }
 
     localStorage.setItem("defaultWeatherCity", charts[0].city);
-    dispatch(setCity(""));
+    dispatch(setDefault(charts[0].city));
 
     alert(`${charts[0].city} has been saved to default!`);
   };
@@ -74,7 +95,7 @@ export default function Home() {
       return;
     }
 
-    const location = {
+    const location: Coordinates = {
       latitude: clickedCoords.lat,
       longitude: clickedCoords.lng,
     };
@@ -83,9 +104,7 @@ export default function Home() {
     dispatch(geoLocateWeather(location));
   };
 
-  const handleCurrentLocation = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-
+  const handleCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported.");
       return;
@@ -95,7 +114,7 @@ export default function Home() {
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const location = {
+        const location: Coordinates = {
           latitude: coords.latitude,
           longitude: coords.longitude,
         };
@@ -107,9 +126,9 @@ export default function Home() {
           setIsLocating(false);
         });
       },
-      (error) => {
+      (geolocationError) => {
         setIsLocating(false);
-        alert(error.message);
+        alert(geolocationError.message);
       },
     );
   };
@@ -120,135 +139,41 @@ export default function Home() {
     if (savedCity) {
       dispatch(setDefault(savedCity));
       dispatch(fetchWeather(savedCity));
-      dispatch(setCity(savedCity));
       dispatch(setCity(""));
     }
   }, [dispatch]);
 
   return (
     <main className={styles.main}>
-      <h1>Weather App</h1>
+      <h1>Search the Weather</h1>
 
-      <form className={styles.card} onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={city}
-          placeholder="Enter city"
-          onChange={(e) => dispatch(setCity(e.target.value))}
-        />
+      <WeatherSearch
+        city={city}
+        onCityChange={handleCityChange}
+        onSubmit={handleSubmit}
+        onSetDefault={handleDefault}
+        onCurrentLocation={handleCurrentLocation}
+      />
 
-        <button className={styles.buttonClass} type="submit">
-          Get Weather
-        </button>
-
-        <button
-          className={styles.buttonClass}
-          type="button"
-          onClick={handleDefault}
-        >
-          Set as Default
-        </button>
-      </form>
-
-      <button
-        className={styles.geoLocate}
-        type="button"
-        onClick={handleCurrentLocation}
-      >
-        Find Current Location
-      </button>
-
-      {(isLocating || isLoading) && <p>Loading...</p>}
-
-      {currentCoords && (
-        <APIProvider apiKey={API_KEY}>
-          <div className={styles.map}>
-            <Map
-              defaultCenter={{
-                lat: currentCoords.latitude,
-                lng: currentCoords.longitude,
-              }}
-              defaultZoom={10}
-              npm
-              run
-              mapId={MAP_ID}
-              gestureHandling="greedy"
-              onClick={handleMapClick}
-              style={{
-                width: "100%",
-                height: "400px",
-                border: "4px solid blue",
-              }}
-            >
-              {selectedCoords && (
-                <AdvancedMarker
-                  position={{
-                    lat: selectedCoords.latitude,
-                    lng: selectedCoords.longitude,
-                  }}
-                  title="Selected location"
-                >
-                  <Pin
-                    background="#4285F4"
-                    borderColor="#ffffff"
-                    glyphColor="#ffffff"
-                  />
-                </AdvancedMarker>
-              )}
-            </Map>
-          </div>
-        </APIProvider>
+      {(isLocating || isLoading) && (
+        <p className={styles.loading}>Retrieving weather information...</p>
       )}
+
+      <GoogleMap
+        currentCoords={currentCoords}
+        selectedCoords={selectedCoords}
+        onMapClick={handleMapClick}
+      />
 
       {defaultCity && (
-        <p className={styles.card}>Default city: {defaultCity}</p>
+        <p className={styles.defaultCity}>
+          Default city: <strong>{defaultCity}</strong>
+        </p>
       )}
 
-      {(isLocating || isLoading) && <p>Loading...</p>}
+      {error && <p className={styles.error}>{error}</p>}
 
-      {error && <p>{error}</p>}
-
-      <div className={styles.columnNameContainer}>
-        <div className={styles.card}>City</div>
-        <div className={styles.card}>Temperature</div>
-        <div className={styles.card}>Humidity</div>
-        <div className={styles.card}>Pressure</div>
-      </div>
-
-      {charts.map((chart) => (
-        <div key={chart.city} className={styles.weatherContainer}>
-          <div className={styles.card}>
-            <h2 className={styles.cityName}>{chart.city}</h2>
-          </div>
-
-          <div className={styles.card}>
-            <Sparklines data={chart.temps}>
-              <SparklinesLine color="orange" />
-              <SparklinesReferenceLine type="mean" />
-            </Sparklines>
-
-            <p>{chart.meanTemp}°F</p>
-          </div>
-
-          <div className={styles.card}>
-            <Sparklines data={chart.humidity}>
-              <SparklinesLine color="red" />
-              <SparklinesReferenceLine type="mean" />
-            </Sparklines>
-
-            <p>{chart.meanHumidity}%</p>
-          </div>
-
-          <div className={styles.card}>
-            <Sparklines data={chart.pressure}>
-              <SparklinesLine color="white" />
-              <SparklinesReferenceLine type="mean" />
-            </Sparklines>
-
-            <p>{chart.meanPressure} hPa</p>
-          </div>
-        </div>
-      ))}
+      <WeatherCharts charts={charts} />
     </main>
   );
 }
